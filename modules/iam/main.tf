@@ -1,34 +1,27 @@
-# Rol IAM para EC2
-resource "aws_iam_role" "ec2_role" {
-    name = "ec2-role-acpprr"
+# Rol IAM genérico
+resource "aws_iam_role" "this" {
+    name               = var.role_name
+    # Se toma el JSON de la política de asunción directamente de la variable
+    assume_role_policy = var.assume_role_policy_json 
 
-    assume_role_policy = jsonencode({
-        Statement = [
-            {
-                Effect = "Allow"
-                Principal = {
-                    Service = "ec2.amazonaws.com"
-                }
-                Action = "sts:AssumeRole"
-            }
-        ]
-    })
+    tags = {
+        Name = var.role_name
+    }
 }
 
-# Instance Profile para asociar este rol a EC2
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-    name = "ec2-instance-profile-acpprr"
-    role = aws_iam_role.ec2_role.name
+# Instance Profile (Condicional: solo se crea si instance_profile_name tiene un valor)
+resource "aws_iam_instance_profile" "this" {
+# count es 1 si el nombre existe (longitud > 0), 0 si está vacío.
+    count = length(var.instance_profile_name) > 0 ? 1 : 0 
+    
+    name = var.instance_profile_name
+    role = aws_iam_role.iam_role.name
 }
 
-# Política AmazonSSMManagedInstanceCore
-resource "aws_iam_role_policy_attachment" "ssm_core" {
-    role = aws_iam_role.ec2_role.name
-    policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
+# Adjuntar políticas (usa for_each para la lista de ARNs)
+resource "aws_iam_role_policy_attachment" "this" {
+    for_each = toset(var.attached_policies)
 
-# Política AmazonS3ReadOnlyAccess
-resource "aws_iam_role_policy_attachment" "s3_readonly" {
-    role = aws_iam_role.ec2_role.name
-    policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+    role       = aws_iam_role.iam_role.name
+    policy_arn = each.value
 }
