@@ -14,6 +14,20 @@ variable "ec2_attached_policies" {
     default     = []
 }
 
+variable "ingress_rules" {
+    description = "Mapa de configuraciones para todas las reglas de Security Group Ingress."
+    type = map(object({
+        # SG que recibe el tráfico (e.g., web_tier_sg)
+        target_sg_key     = string 
+        
+        # Origen del tráfico (puede ser CIDR o clave de SG)
+        source_type       = string 
+        source_key_or_cidr = string 
+        
+        ip_protocol       = string
+        to_port           = number
+    }))
+}
 
 
 
@@ -25,8 +39,10 @@ variable "ec2_attached_policies" {
 
 
 
-
-
+variable "vpc_cidr" {
+    description = "CIDR de la VPC"
+    type = string
+}
 
 variable "public_subnets" {
     description = "Configuración de subredes públicas (CIDR, AZ, Nombre)."
@@ -58,9 +74,9 @@ variable "alb_configs" {
     description = "Mapa de configuraciones para cada Application Load Balancer (ALB)."
     type = map(object({
         lb_name             = string
-        lb_internal         = bool
-        subnet_keys         = list(string)
-        security_group_keys = list(string)
+        lb_internal         = bool              # Define si usa subredes públicas (false) o privadas (true)
+        subnet_keys         = list(string)      # Claves de las subredes (ej: "web_az1")
+        security_group_keys = list(string)      # Claves de los Security Groups (ej: "web_sg")
         target_group_name   = string
         target_group_port   = number
         health_check_path   = optional(string)

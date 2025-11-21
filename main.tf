@@ -3,9 +3,9 @@ module "s3_bucket" {
 }
 
 resource "aws_vpc" "main" {
-    cidr_block = "10.0.0.0/16"
+    cidr_block = var.vpc_cidr
     tags = {
-        Name = "3-tier"
+        Name = "3-tier-VPC"
     }
 }
 
@@ -38,22 +38,20 @@ resource "aws_subnet" "private" {
     }
 }
 
-resource "aws_nat_gateway" "nat_gw_az1" {
-    subnet_id     = aws_subnet.public[web_az1].id
-
+resource "aws_eip" "nat_gateway" {
+    for_each = aws_subnet.public
     tags = {
-    Name = "NAT-GW-AZ1"
+        Name = "EIP-NAT-GW-${each.key}"
     }
-    depends_on = [module.internet_gateway]
 }
 
-resource "aws_nat_gateway" "nat_gw_az2" {
-    subnet_id     = aws_subnet.public[web_az2].id
-
+resource "aws_nat_gateway" "this" {
+    for_each = aws_subnet.public
+    allocation_id = aws_eip.nat_gateway[each.key].id 
+    subnet_id = each.value.id 
     tags = {
-    Name = "NAT-GW-AZ2"
+        Name = "NAT-GW-${each.key}"
     }
-    depends_on = [module.internet_gateway]
 }
 
 module "security_group" {
@@ -66,45 +64,67 @@ module "security_group" {
 
 }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_lb_external_from_internet" {
-    security_group_id = module.security_group[public_lb_sg].id
+resource "aws_vpc_security_group_ingress_rule" "custom_ingress_rules" {
+    for_each = var.ingress_rules
 
-    cidr_ipv4         = "0.0.0.0/0"
-    ip_protocol       = "TCP"
-    to_port           = 80 
+    # 1. SG que recibe el tráfico (Target)
+    security_group_id = module.security_group[each.value.target_sg_key].id 
+
+    # 2. Protocolo y Puertos
+    ip_protocol = each.value.ip_protocol
+    to_port     = each.value.to_port
+
+    # 3. 🎯 LÓGICA CONDICIONAL: Origen del Tráfico
+    
+    # Si source_type es "cidr", se usa cidr_ipv4.
+    cidr_ipv4 = each.value.source_type == "cidr" ? each.value.source_key_or_cidr : null
+
+    # Si source_type es "sg_ref", se usa referenced_security_group_id,
+    # transformando la clave del SG a su ID real.
+    referenced_security_group_id = each.value.source_type == "sg_ref" ? module.security_group[each.value.source_key_or_cidr].id : null
 }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_web_tier_from_external_lb" {
-    security_group_id            = module.security_group[web_tier_sg].id
 
-    referenced_security_group_id = module.security_group[public_lb_sg].id
-    ip_protocol                  = "TCP"
-    to_port                      = 80 
-}
 
-resource "aws_vpc_security_group_ingress_rule" "allow_internal_lb_from_web_tier" {
-    security_group_id            = module.security_group[internal_lb_sg].id
+# resource "aws_vpc_security_group_ingress_rule" "allow_lb_external_from_internet" {
+#     security_group_id = module.security_group[public_lb_sg].id
 
-    referenced_security_group_id = module.security_group[web_tier_sg].id
-    ip_protocol                  = "TCP"
-    to_port                      = 80 
-}
+#     cidr_ipv4         = "0.0.0.0/0"
+#     ip_protocol       = "TCP"
+#     to_port           = 80 
+# }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_private_app_from_internal_lb" {
-    security_group_id            = module.security_group[app_tier_sg].id
+# resource "aws_vpc_security_group_ingress_rule" "allow_web_tier_from_external_lb" {
+#     security_group_id            = module.security_group[web_tier_sg].id
 
-    referenced_security_group_id = module.security_group[internal_lb_sg].id
-    ip_protocol                  = "TCP"
-    to_port                      = 4000
-}
+#     referenced_security_group_id = module.security_group[public_lb_sg].id
+#     ip_protocol                  = "TCP"
+#     to_port                      = 80 
+# }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_db_from_private_app" {
-    security_group_id            = module.security_group[db_sg].id
+# resource "aws_vpc_security_group_ingress_rule" "allow_internal_lb_from_web_tier" {
+#     security_group_id            = module.security_group[internal_lb_sg].id
 
-    referenced_security_group_id = module.security_group[app_tier_sg].id
-    ip_protocol                  = "TCP"
-    to_port                      = 3306
-}
+#     referenced_security_group_id = module.security_group[web_tier_sg].id
+#     ip_protocol                  = "TCP"
+#     to_port                      = 80 
+# }
+
+# resource "aws_vpc_security_group_ingress_rule" "allow_private_app_from_internal_lb" {
+#     security_group_id            = module.security_group[app_tier_sg].id
+
+#     referenced_security_group_id = module.security_group[internal_lb_sg].id
+#     ip_protocol                  = "TCP"
+#     to_port                      = 4000
+# }
+
+# resource "aws_vpc_security_group_ingress_rule" "allow_db_from_private_app" {
+#     security_group_id            = module.security_group[db_sg].id
+
+#     referenced_security_group_id = module.security_group[app_tier_sg].id
+#     ip_protocol                  = "TCP"
+#     to_port                      = 3306
+# }
 # module "ec2_iam" {
 #     source = "./modules/iam"
 # }
@@ -132,84 +152,26 @@ module "ec2_role" {
     })
 }
 
-module "external_load_balancer" {
-    source = "./modules/load_balancer"
-
-    lb_name             = each.value.lb_name
-    lb_internal         = each.value.lb_internal
-    subnet_ids          = each.value.subnet_ids
-    security_group_ids  = each.value.security_group_ids
-    target_group_name   = each.value.target_group_name
-    target_group_port   = each.value.target_group_port
-    health_check_path   = each.value.health_check_path
-    health_check_matcher = each.value.health_check_matcher
-    
-    # La VPC es una referencia global para todos los ALBs
-    vpc_id              = aws_vpc.main.id 
-}
-
-module "internal_load_balancer" {
-    # 🎯 Itera sobre el mapa de configuraciones
+module "load_balancers" {
+    source = "./modules/alb"
     for_each = var.alb_configs
 
-    source = "./modules/load_balancer"
-
-    # Mapeo de variables
+    # 1. Variables directas
     lb_name             = each.value.lb_name
     lb_internal         = each.value.lb_internal
-    subnet_ids          = each.value.subnet_ids
-    security_group_ids  = each.value.security_group_ids
     target_group_name   = each.value.target_group_name
     target_group_port   = each.value.target_group_port
     health_check_path   = each.value.health_check_path
     health_check_matcher = each.value.health_check_matcher
-    
-    # La VPC es una referencia global para todos los ALBs
     vpc_id              = aws_vpc.main.id 
+    
+    # 2. Transformación de Security Groups (usan el mismo módulo)
+    security_group_ids = [
+        for key in each.value.security_group_keys : module.security_group[key].security_group_id
+    ]
+    subnet_ids = [
+        for key in each.value.subnet_keys : 
+        # Si lb_internal es true, usa aws_subnet.private. Si es false, usa aws_subnet.public.
+        each.value.lb_internal ? aws_subnet.private[key].id : aws_subnet.public[key].id
+    ]
 }
-
-
-
-# module "external_load_balancer" {
-#     for_each = var.external_alb_configs # ⬅️ Usa la variable de externos
-
-#     source = "./modules/load_balancer"
-
-#     lb_name             = each.value.lb_name
-#     lb_internal         = false # ⬅️ ¡Siempre false aquí!
-#     target_group_name   = each.value.target_group_name
-#     target_group_port   = each.value.target_group_port
-#     health_check_path   = each.value.health_check_path
-#     health_check_matcher = each.value.health_check_matcher
-#     vpc_id              = aws_vpc.main.id 
-    
-#     # Transformación de claves a IDs (Asumiendo aws_subnet.public y module.security_group)
-#     subnet_ids = [
-#         for key in each.value.subnet_keys : aws_subnet.public[key].id
-#     ]
-#     security_group_ids = [
-#         for key in each.value.security_group_keys : module.security_group[key].security_group_id
-#     ]
-# }
-
-# module "internal_load_balancer" {
-#     for_each = var.internal_alb_configs # ⬅️ Usa la variable de internos
-
-#     source = "./modules/load_balancer"
-
-#     lb_name             = each.value.lb_name
-#     lb_internal         = true # ⬅️ ¡Siempre true aquí!
-#     target_group_name   = each.value.target_group_name
-#     target_group_port   = each.value.target_group_port
-#     health_check_path   = each.value.health_check_path
-#     health_check_matcher = each.value.health_check_matcher
-#     vpc_id              = aws_vpc.main.id 
-    
-#     # Transformación de claves a IDs (Asumiendo aws_subnet.private y module.security_group)
-#     subnet_ids = [
-#         for key in each.value.subnet_keys : aws_subnet.private[key].id
-#     ]
-#     security_group_ids = [
-#         for key in each.value.security_group_keys : module.security_group[key].security_group_id
-#     ]
-# }
