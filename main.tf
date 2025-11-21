@@ -5,7 +5,7 @@ module "s3_bucket" {
 resource "aws_vpc" "main" {
     cidr_block = var.vpc_cidr
     tags = {
-        Name = "3-tier-VPC"
+        Name = var.vpc_name
     }
 }
 
@@ -43,6 +43,8 @@ resource "aws_eip" "nat_gateway" {
     tags = {
         Name = "EIP-NAT-GW-${each.key}"
     }
+
+    depends_on = [module.internet_gateway]
 }
 
 resource "aws_nat_gateway" "this" {
