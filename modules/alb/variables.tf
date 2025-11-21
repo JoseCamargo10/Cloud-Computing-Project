@@ -9,12 +9,12 @@ variable "lb_internal" {
 }
 
 variable "subnet_ids" {
-    description = "Lista de IDs de subredes donde se desplegará el ALB (mínimo 2, en diferentes AZs)"
+    description = "Lista de subredes donde se desplegará el ALB (mínimo 2, en diferentes AZs)"
     type        = list(string)
 }
 
 variable "security_group_ids" {
-    description = "Lista de IDs de Security Groups para adjuntar al ALB"
+    description = "Lista de Security Groups para adjuntar al ALB"
     type        = list(string)
 }
 

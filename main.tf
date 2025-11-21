@@ -147,6 +147,7 @@ module "ec2_role" {
         Statement = [{
         Effect = "Allow",
         Principal = {
+
             Service = "ec2.amazonaws.com"
         },
         Action = "sts:AssumeRole"
@@ -176,4 +177,60 @@ module "load_balancers" {
         # Si lb_internal es true, usa aws_subnet.private. Si es false, usa aws_subnet.public.
         each.value.lb_internal ? aws_subnet.private[key].id : aws_subnet.public[key].id
     ]
+}
+
+resource "aws_route_table" "public_route_table" {
+    vpc_id = aws_vpc.main.id
+
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = module.internet_gateway.internet_gateway_id
+    }
+
+    tags = {
+        Name = "Public-RT"
+    }
+}
+
+resource "aws_route_table_association" "public" {
+    for_each       = aws_subnet.public
+
+    subnet_id      = each.value.id
+    route_table_id = aws_route_table.public_route_table.id
+}
+
+resource "aws_route_table" "private_route_table_az1" {
+    vpc_id = aws_vpc.main.id
+
+    route {
+        cidr_block = "0.0.0.0/0"
+        nat_gateway_id = aws_nat_gateway.this[web_az1].id
+    }
+
+    tags = {
+        Name = "Private-RT-AZ1"
+    }
+}
+
+resource "aws_route_table_association" "private_route_table_az1_association" {
+    subnet_id      = aws_subnet.public[web_az1]
+    route_table_id = aws_route_table.private_route_table_az1
+}
+
+resource "aws_route_table" "private_route_table_az2" {
+    vpc_id = aws_vpc.main.id
+
+    route {
+        cidr_block = "0.0.0.0/0"
+        nat_gateway_id = aws_nat_gateway.this[web_az2].id
+    }
+
+    tags = {
+        Name = "Private-RT-AZ2"
+    }
+}
+
+resource "aws_route_table_association" "private_route_table_az2_association" {
+    subnet_id      = aws_subnet.public[web_az2]
+    route_table_id = aws_route_table.private_route_table_az2
 }
