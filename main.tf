@@ -135,7 +135,7 @@ resource "aws_vpc_security_group_ingress_rule" "custom_ingress_rules" {
 ////
 # Llamada al módulo para un Rol de EC2
 module "ec2_role" {
-    source                = "./modules/iam_role"
+    source                = "./modules/iam"
 
     role_name             = var.ec2_role_name
     instance_profile_name = var.ec2_instance_profile_name
@@ -213,8 +213,8 @@ resource "aws_route_table" "private_route_table_az1" {
 }
 
 resource "aws_route_table_association" "private_route_table_az1_association" {
-    subnet_id      = aws_subnet.public[web_az1]
-    route_table_id = aws_route_table.private_route_table_az1
+    subnet_id      = aws_subnet.public[web_az1].id
+    route_table_id = aws_route_table.private_route_table_az1.id
 }
 
 resource "aws_route_table" "private_route_table_az2" {
@@ -231,6 +231,41 @@ resource "aws_route_table" "private_route_table_az2" {
 }
 
 resource "aws_route_table_association" "private_route_table_az2_association" {
-    subnet_id      = aws_subnet.public[web_az2]
-    route_table_id = aws_route_table.private_route_table_az2
+    subnet_id      = aws_subnet.public[web_az2].id
+    route_table_id = aws_route_table.private_route_table_az2.id
+}
+
+module "auto_scaling_groups" {
+    source   = "./modules/asg"
+    for_each = var.asg_configs 
+
+    name_prefix              = each.key
+    ami_id                   = each.value.ami_id
+    instance_type            = each.value.instance_type
+    iam_instance_profile_arn = module.ec2_role.instance_profile_arn
+    associate_public_ip      = each.value.associate_public_ip
+    
+    security_group_ids = [
+        for key in each.value.security_group_keys : module.security_group[key].security_group_id
+    ]
+
+    asg_desired_capacity = each.value.asg_desired_capacity
+    asg_max_size         = each.value.asg_max_size
+    asg_min_size         = each.value.asg_min_size
+
+    # 🎯 1. LÓGICA CONDICIONAL DE SUBREDES
+    # Utilizamos el valor de 'associate_public_ip' (que coincide con lb_internal)
+    # para decidir qué mapa de subredes usar.
+    vpc_zone_identifier = [
+        for key in each.value.subnet_keys : 
+        # Si associate_public_ip es TRUE (Web), usa aws_subnet.public.
+        # Si es FALSE (App), usa aws_subnet.private.
+        each.value.associate_public_ip ? aws_subnet.public[key].id : aws_subnet.private[key].id
+    ]
+
+    # 🎯 2. REFERENCIA DE TARGET GROUP
+    # Buscamos el ARN del Target Group creado por el módulo Load Balancers (module.load_balancers)
+    target_group_arns = [
+        module.load_balancers[each.value.target_alb_key].target_group_arn
+    ]
 }

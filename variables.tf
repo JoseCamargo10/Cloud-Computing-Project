@@ -88,3 +88,28 @@ variable "alb_configs" {
         health_check_matcher = optional(string)
     }))
 }
+
+variable "asg_configs" {
+    description = "Mapa de configuraciones para todos los Auto Scaling Groups y sus Launch Templates."
+    type = map(object({
+        # Configuración de Launch Template (LT)
+        ami_id                    = string
+        instance_type             = string
+        iam_instance_profile_arn  = optional(string)
+        associate_public_ip       = bool               # true para Web (público), false para App (privado)
+        
+        # Claves para encontrar los Security Groups
+        security_group_keys       = list(string)       # e.g., ["web_sg"] o ["app_sg"]
+
+        # Configuración de Auto Scaling Group (ASG)
+        asg_desired_capacity      = number
+        asg_max_size              = number
+        asg_min_size              = number
+        
+        # Claves para encontrar las subredes (diferente si es Web o App)
+        subnet_keys               = list(string)       # e.g., ["web_az1", "web_az2"] (Web) o ["app_az1", "app_az2"] (App)
+        
+        # Clave del Load Balancer (para Target Group ARNs)
+        target_alb_key            = string             # e.g., "external_web_alb" o "internal_app_alb"
+    }))
+}

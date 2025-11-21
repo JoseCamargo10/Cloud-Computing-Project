@@ -147,3 +147,28 @@ alb_configs = {
         health_check_path   = "/health"
     }
 }
+
+asg_configs = {
+    "web_tier" = {
+        ami_id                   = ""
+        instance_type            = "t2.micro"
+        associate_public_ip      = true                      # Necesita IP pública para el Internet Gateway
+        security_group_keys      = ["web_tier_sg"]           # Asumiendo que esta es la clave de tu SG
+        asg_desired_capacity     = 2
+        asg_max_size             = 2
+        asg_min_size             = 2
+        subnet_keys              = ["web_az1", "web_az2"] 
+        target_alb_key           = "web-alb-external" 
+    },
+    "app_tier" = {
+        ami_id                   = ""
+        instance_type            = "t2.micro"
+        associate_public_ip      = false
+        security_group_keys      = ["app_tier_sg"]
+        asg_desired_capacity     = 2
+        asg_max_size             = 2
+        asg_min_size             = 2
+        subnet_keys              = ["app_az1", "app_az2"] 
+        target_alb_key           = "app-alb-internal" 
+    }
+}
