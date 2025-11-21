@@ -10,7 +10,6 @@ resource "aws_lb_target_group" "this" {
     name        = var.target_group_name
     port        = var.target_group_port
     protocol    = "HTTP"
-    # Referencia al ID de la VPC
     vpc_id      = var.vpc_id 
     target_type = "instance"
     
@@ -18,7 +17,6 @@ resource "aws_lb_target_group" "this" {
         path                = var.health_check_path
         protocol            = "HTTP"
         matcher             = var.health_check_matcher
-        # Se mantienen valores por defecto si no se declaran variables para ellos
         interval            = 30
         timeout             = 5
         healthy_threshold   = 2
