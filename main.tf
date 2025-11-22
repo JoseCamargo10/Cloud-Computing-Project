@@ -75,6 +75,7 @@ resource "aws_vpc_security_group_ingress_rule" "custom_ingress_rules" {
     # 2. Protocolo y Puertos
     ip_protocol = each.value.ip_protocol
     to_port     = each.value.to_port
+    from_port     = each.value.to_port
 
     # 3. 🎯 LÓGICA CONDICIONAL: Origen del Tráfico
     
@@ -170,7 +171,7 @@ module "load_balancers" {
     
     # 2. Transformación de Security Groups (usan el mismo módulo)
     security_group_ids = [
-        for key in each.value.security_group_keys : module.security_group[key].security_group_id
+        for key in each.value.security_group_keys : module.security_group[key].id
     ]
     subnet_ids = [
         for key in each.value.subnet_keys : 
@@ -213,7 +214,7 @@ resource "aws_route_table" "private_route_table_az1" {
 }
 
 resource "aws_route_table_association" "private_route_table_az1_association" {
-    subnet_id      = aws_subnet.public["web_az1"].id
+    subnet_id      = aws_subnet.private["app_az1"].id
     route_table_id = aws_route_table.private_route_table_az1.id
 }
 
@@ -231,7 +232,7 @@ resource "aws_route_table" "private_route_table_az2" {
 }
 
 resource "aws_route_table_association" "private_route_table_az2_association" {
-    subnet_id      = aws_subnet.public["web_az2"].id
+    subnet_id      = aws_subnet.private["app_az2"].id
     route_table_id = aws_route_table.private_route_table_az2.id
 }
 
@@ -240,13 +241,13 @@ module "auto_scaling_groups" {
     for_each = var.asg_configs 
 
     name_prefix              = each.key
-    ami_id                   = each.value.ami_id
+    ami_id                   = "ami-0fa3fe0fa7920f68e"#each.value.ami_id
     instance_type            = each.value.instance_type
     iam_instance_profile_arn = module.ec2_role.instance_profile_arn
     associate_public_ip      = each.value.associate_public_ip
     
     security_group_ids = [
-        for key in each.value.security_group_keys : module.security_group[key].security_group_id
+        for key in each.value.security_group_keys : module.security_group[key].id
     ]
 
     asg_desired_capacity = each.value.asg_desired_capacity

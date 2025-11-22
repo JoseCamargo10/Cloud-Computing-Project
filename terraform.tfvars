@@ -107,11 +107,11 @@ private_subnets = {
 security_groups = {
     "public_lb_sg" = {
         name        = "internet-facing-lb-sg"
-        description = "SG para el ALB y tráfico público"
+        description = "SG para el ALB y trafico publico"
     },
     "web_tier_sg" = {
         name        = "web-tier-sg"
-        description = "SG para la capa web pública"
+        description = "SG para la capa web publica"
     },
     "internal_lb_sg" = {
         name        = "private-internal-lb-sg"
@@ -119,7 +119,7 @@ security_groups = {
     },
     "app_tier_sg" = {
         name        = "app-tier-sg"
-        description = "SG para la capa privada de aplicación"
+        description = "SG para la capa privada de aplicacion"
     },
     "db_sg" = {
         name        = "db-sg"
@@ -161,7 +161,7 @@ asg_configs = {
         target_alb_key           = "web-alb-external" 
     },
     "app_tier" = {
-        ami_id                   = ""
+        ami_id                   = "ami-0fa3fe0fa7920f68e"
         instance_type            = "t2.micro"
         associate_public_ip      = false
         security_group_keys      = ["app_tier_sg"]

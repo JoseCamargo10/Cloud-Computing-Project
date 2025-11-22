@@ -7,10 +7,10 @@ resource "aws_launch_template" "this" {
         arn = var.iam_instance_profile_arn 
     }
 
-    vpc_security_group_ids = var.security_group_ids 
 
     network_interfaces {
-        associate_public_ip_address = var.associate_public_ip 
+        associate_public_ip_address = var.associate_public_ip
+        security_groups             = var.security_group_ids
     }
 }
 

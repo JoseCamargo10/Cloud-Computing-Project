@@ -12,16 +12,15 @@ resource "aws_iam_role" "this" {
 # Instance Profile (Condicional: solo se crea si instance_profile_name tiene un valor)
 resource "aws_iam_instance_profile" "this" {
 # count es 1 si el nombre existe (longitud > 0), 0 si está vacío.
-    count = length(var.instance_profile_name) > 0 ? 1 : 0 
     
     name = var.instance_profile_name
-    role = aws_iam_role.iam_role.name
+    role = aws_iam_role.this.name
 }
 
 # Adjuntar políticas (usa for_each para la lista de ARNs)
 resource "aws_iam_role_policy_attachment" "this" {
     for_each = toset(var.attached_policies)
 
-    role       = aws_iam_role.iam_role.name
+    role       = aws_iam_role.this.name
     policy_arn = each.value
 }

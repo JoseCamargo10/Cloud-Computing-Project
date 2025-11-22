@@ -5,6 +5,6 @@ variable "vpc_id" {
 
 variable "name" {
     description = "Nombre del IGW"
-    type        = optional(string)
+    type        = string
     default = ""
 }

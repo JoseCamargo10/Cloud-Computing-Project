@@ -1,4 +1,4 @@
-output "security_group_id" {
+output "id" {
     description = "El ID del Security Group creado."
     value       = aws_security_group.this.id
 }
