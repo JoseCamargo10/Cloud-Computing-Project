@@ -204,7 +204,7 @@ resource "aws_route_table" "private_route_table_az1" {
 
     route {
         cidr_block = "0.0.0.0/0"
-        nat_gateway_id = aws_nat_gateway.this[web_az1].id
+        nat_gateway_id = aws_nat_gateway.this["web_az1"].id
     }
 
     tags = {
@@ -213,7 +213,7 @@ resource "aws_route_table" "private_route_table_az1" {
 }
 
 resource "aws_route_table_association" "private_route_table_az1_association" {
-    subnet_id      = aws_subnet.public[web_az1].id
+    subnet_id      = aws_subnet.public["web_az1"].id
     route_table_id = aws_route_table.private_route_table_az1.id
 }
 
@@ -222,7 +222,7 @@ resource "aws_route_table" "private_route_table_az2" {
 
     route {
         cidr_block = "0.0.0.0/0"
-        nat_gateway_id = aws_nat_gateway.this[web_az2].id
+        nat_gateway_id = aws_nat_gateway.this["web_az2"].id
     }
 
     tags = {
@@ -231,7 +231,7 @@ resource "aws_route_table" "private_route_table_az2" {
 }
 
 resource "aws_route_table_association" "private_route_table_az2_association" {
-    subnet_id      = aws_subnet.public[web_az2].id
+    subnet_id      = aws_subnet.public["web_az2"].id
     route_table_id = aws_route_table.private_route_table_az2.id
 }
 
