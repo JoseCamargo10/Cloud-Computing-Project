@@ -172,3 +172,7 @@ asg_configs = {
         target_alb_key           = "app-alb-internal" 
     }
 }
+
+db_name     = "dbwebapp"
+db_username = "superuser"
+db_password = "Prueba12345"

@@ -113,3 +113,21 @@ variable "asg_configs" {
         target_alb_key            = string             # e.g., "external_web_alb" o "internal_app_alb"
     }))
 }
+
+variable "db_name" {
+  description = "Nombre de la base de datos para el cluster RDS."
+  type        = string
+  default     = "webappdb" 
+}
+
+variable "db_username" {
+  description = "Usuario maestro para la base de datos."
+  type        = string
+  default     = "admin" 
+}
+
+variable "db_password" {
+  description = "Contraseña maestra para la base de datos. ¡Debe ser secreto!"
+  type        = string
+  sensitive   = true 
+}

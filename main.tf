@@ -270,3 +270,19 @@ module "auto_scaling_groups" {
         module.load_balancers[each.value.target_alb_key].target_group_arn
     ]
 }
+
+module "rds_cluster" {
+    source = "./modules/rds"
+
+    db_name                = var.db_name
+    db_username            = var.db_username
+    db_password            = var.db_password
+
+    # IDs de subredes privadas
+    private_subnet_ids     = [for key, subnet in aws_subnet.private : subnet.id
+                                if startswith(key,"db_")]
+
+    # ID del Security Group de la base de datos
+    # Este SG debe permitir el tráfico del SG del "app_tier"
+    vpc_security_group_ids = [module.security_group["db_sg"].id] 
+}
